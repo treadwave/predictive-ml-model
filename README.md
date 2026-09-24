@@ -57,10 +57,10 @@ READ ~10 - 20 RPS
 
 ## Архитектурные схемы
 ### Context 
-<img width="2720" height="2240" alt="c4_context_diagram_v3" src="https://github.com/user-attachments/assets/edc1715f-47ff-40d7-93a5-16fb1c0aa1cf" />
+<img width="800" height="800" alt="Untitled project" src="https://github.com/user-attachments/assets/d9d1a707-5194-4b30-a8b9-f370dcea4a5d" />
 
 ### Container
-<img width="2720" height="2480" alt="c4_container_diagram" src="https://github.com/user-attachments/assets/0108a334-3eb4-482d-b388-9d8b1ccecd38" />
+<img width="800" height="800" alt="Untitled project (1)" src="https://github.com/user-attachments/assets/fb8b869d-cb92-43f3-a65f-726cd0ba2468" />
 
 ## Контракты API
 ### Оборудование 
