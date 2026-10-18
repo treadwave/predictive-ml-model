@@ -1,0 +1,17 @@
+from sqlalchemy import UniqueConstraint, BigInteger, ForeignKey
+from app.core.db import Base
+from sqlalchemy import Column, Integer, DateTime, func, Float, Text
+
+class MlPrediction(Base):
+    __tablename__ = "ml_predictions"
+
+    id = Column(BigInteger, primary_key=True)
+    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)
+    cycle = Column(Integer, nullable=False)
+    predicted_rul = Column(Float, nullable=False)
+    defect_probability = Column(Float, nullable=False)
+    residual = Column(Float, nullable=False)
+    model_version = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+    __table_args__ = (UniqueConstraint("equipment_id", "cycle"), )
