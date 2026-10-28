@@ -1,6 +1,16 @@
-from sqlalchemy import UniqueConstraint, BigInteger, ForeignKey
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    UniqueConstraint,
+    func,
+)
+
 from app.core.db import Base
-from sqlalchemy import Column, Integer, DateTime, func, Float
+
 
 class PhysicsPrediction(Base):
     __tablename__ = "physics_predictions"

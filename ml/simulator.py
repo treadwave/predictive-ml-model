@@ -1,17 +1,16 @@
-from prepare_rul import add_rul, load_train
-from datetime import date
-import time
-
-import os
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, Table, MetaData, text
-from sqlalchemy.dialects.postgresql import insert
-
-import pandas as pd
-from pathlib import Path
 import argparse
 import logging
+import os
 import sys
+import time
+from datetime import date
+from pathlib import Path
+
+import pandas as pd
+from dotenv import load_dotenv
+from prepare_rul import add_rul, load_train
+from sqlalchemy import MetaData, Table, create_engine, text
+from sqlalchemy.dialects.postgresql import insert
 
 logger = logging.getLogger("simulator")
 

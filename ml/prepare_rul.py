@@ -2,7 +2,6 @@
 import argparse
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 OP_COLS = ["op1", "op2", "op3"]

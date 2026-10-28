@@ -1,5 +1,7 @@
+from sqlalchemy import Boolean, Column, Text
+
 from app.core.db import Base
-from sqlalchemy import Column, Boolean, Text
+
 
 class SensorCatalog(Base):
     __tablename__ = "sensor_catalog"

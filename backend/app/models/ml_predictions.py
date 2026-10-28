@@ -1,6 +1,17 @@
-from sqlalchemy import UniqueConstraint, BigInteger, ForeignKey
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+    func,
+)
+
 from app.core.db import Base
-from sqlalchemy import Column, Integer, DateTime, func, Float, Text
+
 
 class MlPrediction(Base):
     __tablename__ = "ml_predictions"

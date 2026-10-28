@@ -1,12 +1,13 @@
-from sqlalchemy import create_engine, text
-import xgboost as xgb
-import pandas as pd
-import os
-from dotenv import load_dotenv
-import numpy as np
-import time
 import logging
+import os
 import sys
+import time
+
+import numpy as np
+import pandas as pd
+import xgboost as xgb
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 logger = logging.getLogger("worker")
 

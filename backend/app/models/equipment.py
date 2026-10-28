@@ -1,6 +1,7 @@
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Column, Date, Integer, Text, UniqueConstraint
+
 from app.core.db import Base
-from sqlalchemy import Column, Integer, Date, Text
+
 
 class Equipment(Base):
     __tablename__ = "equipment"

@@ -1,5 +1,16 @@
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    func,
+)
+
 from app.core.db import Base
-from sqlalchemy import Column, Integer, DateTime, Text, BigInteger, ForeignKey, Index, func
+
 
 class Alert(Base):
     __tablename__ = "alerts"
