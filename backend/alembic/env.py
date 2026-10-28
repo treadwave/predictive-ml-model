@@ -1,12 +1,11 @@
 import os
 from logging.config import fileConfig
 
+import app.models  # noqa: F401
 from alembic import context
 from app.core.db import Base
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
-
-import app.models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
