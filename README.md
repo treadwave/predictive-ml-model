@@ -2,7 +2,7 @@
 
 Язык (backend): Python
 Язык (frontend): TypeScript
-ML/DL: PyTorch, XGBoost
+ML/DL: PyTorch, XGBoost, pandas
 Вычисления: NumPy, SciPy
 Backend: FastAPI
 Frontend: React
