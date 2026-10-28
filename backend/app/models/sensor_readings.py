@@ -1,6 +1,16 @@
-from sqlalchemy import UniqueConstraint, BigInteger, ForeignKey
+from sqlalchemy import (
+    REAL,
+    BigInteger,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    UniqueConstraint,
+    func,
+)
+
 from app.core.db import Base
-from sqlalchemy import Column, Integer, DateTime, REAL, func
+
 
 class SensorReading(Base):
     __tablename__ = "sensor_readings"
