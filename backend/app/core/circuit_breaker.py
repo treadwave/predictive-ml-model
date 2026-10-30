@@ -1,5 +1,6 @@
 import time
 
+
 class CircuitBreaker:
     def __init__(self, error_threesold, time):
         self.errors = 0

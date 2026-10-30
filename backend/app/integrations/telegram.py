@@ -1,6 +1,9 @@
-import httpx
 from dataclasses import dataclass
+
+import httpx
+
 from ..core.circuit_breaker import circuit_breaker
+
 
 @dataclass
 class Alert:
@@ -35,7 +38,7 @@ async def send_telegram_alert(bot_token: str, chat_id: str, alert: Alert):
                 pass
 
     except httpx.HTTPStatusError as e:
-        if e.response.is_client_error and not(e.response.status_code == 429):
+        if e.response.is_client_error and e.response.status_code != 429:
             print(e)
             circuit_breaker.set_closed()
 
