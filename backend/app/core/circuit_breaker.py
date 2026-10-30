@@ -1,5 +1,7 @@
+import logging
 import time
 
+logger = logging.getLogger("circuit_breaker")
 
 class CircuitBreaker:
     def __init__(self, error_threesold, time):
@@ -20,7 +22,7 @@ class CircuitBreaker:
     def open(self):
         self.state = "open"
         self.errors = 0
-        print("Circuit breaker opened")
+        logger.info("Circuit breaker opened")
 
     def reset(self):
         self.errors = 0
@@ -35,7 +37,6 @@ class CircuitBreaker:
         self.state = "half-open"
         self.time_begin = time.time()
         self.time_wait = self.time_begin + self.time_to_wait
-        print("in half open")
 
     def check_time(self):
         self.time_begin = time.time()
@@ -44,7 +45,6 @@ class CircuitBreaker:
 
     def allow_request(self) -> bool:
         if self.state == "open":
-            print("allow request checking")
             self.check_time()
 
         if self.state == "open":
