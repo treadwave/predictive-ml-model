@@ -29,6 +29,7 @@ export function EquipmentCard() {
 
   const [recalculating, setRecalculating] = useState(false);
   const [recalcError, setRecalcError] = useState<string | null>(null);
+  const [forecastVersion, setForecastVersion] = useState(0);
 
   async function recalculate() {
     setRecalculating(true);
@@ -38,6 +39,7 @@ export function EquipmentCard() {
       equipment.setData((prev) =>
         prev ? { ...prev, status: s.status, predicted_rul: s.predicted_rul, current_cycle: s.current_cycle } : prev,
       );
+      setForecastVersion((v) => v + 1);
     } catch (e) {
       setRecalcError((e as Error).message);
     } finally {
@@ -76,7 +78,7 @@ export function EquipmentCard() {
       {recalcError && <ErrorMessage message={recalcError} />}
 
       <div className="grid">
-        <ForecastChart id={id} />
+        <ForecastChart id={id} version={forecastVersion} />
         <HistoryChart id={id} />
         <PhysicsChart />
         <EquipmentAlerts id={id} />
@@ -121,8 +123,8 @@ function HistoryChart({ id }: { id: number }) {
   );
 }
 
-function ForecastChart({ id }: { id: number }) {
-  const { data, error } = useFetch(() => api.getForecast(id), [id]);
+function ForecastChart({ id, version }: { id: number; version: number }) {
+  const { data, error } = useFetch(() => api.getForecast(id), [id, version]);
 
   const points = (data?.points ?? []).map((p) => ({ ...p, range: [p.rul_low, p.rul_high] }));
 
