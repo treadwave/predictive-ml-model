@@ -1,3 +1,5 @@
+import { getToken, setSession } from "./session";
+
 export type Status = "normal" | "warning" | "critical";
 
 export interface Equipment {
@@ -49,19 +51,51 @@ export interface Alert {
   message: string;
 }
 
+export interface User {
+  id: number;
+  email: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(`${status}: ${detail}`);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 const BASE = "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, init);
+  const token = getToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(BASE + path, { ...init, headers });
   if (!res.ok) {
+    // Токен просрочен или пользователь удалён: выходим, RequireAuth откроет страницу входа.
+    if (res.status === 401 && token && token === getToken()) setSession(null);
     let detail = res.statusText;
     try {
       const body = await res.json();
       if (typeof body.detail === "string") detail = body.detail;
+      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg: string }) => d.msg).join("; ");
     } catch {}
-    throw new Error(`${res.status}: ${detail}`);
+    throw new ApiError(res.status, detail);
   }
   return res.json() as Promise<T>;
+}
+
+function postJson(body: unknown): RequestInit {
+  return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
 export const api = {
@@ -71,10 +105,8 @@ export const api = {
   getForecast: (id: number) => request<Forecast>(`/equipment/${id}/forecast`),
   listAlerts: (limit = 100) => request<Alert[]>(`/alerts?limit=${limit}`),
   alertsByEquipment: (id: number, limit = 50) => request<Alert[]>(`/alerts/${id}?limit=${limit}`),
-  predict: (id: number) =>
-    request<EquipmentStatus>("/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ equipment_id: id }),
-    }),
+  predict: (id: number) => request<EquipmentStatus>("/predict", postJson({ equipment_id: id })),
+  login: (email: string, password: string) => request<AuthResponse>("/auth/login", postJson({ email, password })),
+  register: (email: string, password: string) =>
+    request<AuthResponse>("/auth/register", postJson({ email, password })),
 };

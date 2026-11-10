@@ -4,6 +4,7 @@ from .ml_predictions import MlPrediction
 from .physics_predictions import PhysicsPrediction
 from .sensor_catalog import SensorCatalog
 from .sensor_readings import SensorReading
+from .users import User
 
 __all__ = [
     "Alert",
@@ -12,4 +13,5 @@ __all__ = [
     "PhysicsPrediction",
     "SensorCatalog",
     "SensorReading",
+    "User",
 ]
