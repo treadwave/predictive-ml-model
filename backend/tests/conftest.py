@@ -13,7 +13,7 @@ os.environ["RUL_CRITICAL"] = "30"
 os.environ["RUL_CLIP"] = "125"
 os.environ["JWT_SECRET"] = "test-secret-for-pytest-only-0123456789"
 
-TABLES = "alerts, ml_predictions, physics_predictions, sensor_readings, equipment, users"
+TABLES = "alerts, ml_predictions, physics_predictions, sensor_readings, equipment, users, login_attempts"
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def client(db):
     from app.models import User
     from main import app
 
-    statement = insert(User).values(email="operator@example.com", password_hash="-").returning(User.id)
+    statement = insert(User).values(login="operator", password_hash="-").returning(User.id)
     user_id = db.execute(statement).scalar_one()
     db.commit()
     return TestClient(app, headers={"Authorization": f"Bearer {create_token(user_id)}"})
@@ -88,3 +88,29 @@ def add_reading(db):
         return sensors
 
     return add
+
+
+@pytest.fixture(scope="session")
+def password_hash():
+    from app.core.security import hash_password
+    return hash_password("Correct-pass 123!")
+
+
+@pytest.fixture
+def account(db, password_hash):
+    from app.models import User
+
+    def add(login="worker", role="employee", is_active=True):
+        row = db.execute(insert(User).values(login=login, role=role, is_active=is_active,
+                         password_hash=password_hash).returning(User.id)).scalar_one()
+        db.commit()
+        return row
+    return add
+
+
+@pytest.fixture
+def admin_client(db, account):
+    from app.core.security import create_token
+    from main import app
+    user_id = account("administrator", "admin")
+    return TestClient(app, headers={"Authorization": f"Bearer {create_token(user_id)}"})

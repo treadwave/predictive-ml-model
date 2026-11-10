@@ -1,31 +1,30 @@
 from sqlalchemy import Connection, select
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.security import hash_password, verify_password
+from app.core.security import DUMMY_HASH, hash_password, verify_password
 from app.models.users import User
 
+PUBLIC_COLUMNS = (User.id, User.login, User.role, User.is_active, User.created_at)
 
-def create_user(db: Connection, email: str, password: str) -> dict | None:
-    """Новый пользователь; None, если email уже занят."""
-    query = (
-        insert(User)
-        .values(email=email, password_hash=hash_password(password))
-        .on_conflict_do_nothing(index_elements=[User.email])
-        .returning(User.id, User.email)
-    )
-    row = db.execute(query).mappings().first()
+
+def create_user(db: Connection, login: str, password: str, *, role: str = "employee") -> dict | None:
+    row = db.execute(insert(User).values(login=login, password_hash=hash_password(password), role=role)
+                     .on_conflict_do_nothing(index_elements=[User.login])
+                     .returning(*PUBLIC_COLUMNS)).mappings().first()
     db.commit()
     return dict(row) if row else None
 
 
-def authenticate(db: Connection, email: str, password: str) -> dict | None:
-    query = select(User.id, User.email, User.password_hash).where(User.email == email)
-    row = db.execute(query).mappings().first()
-    if row is None or not verify_password(password, row["password_hash"]):
+def authenticate(db: Connection, login: str, password: str) -> dict | None:
+    row = db.execute(select(*PUBLIC_COLUMNS, User.password_hash, User.token_version)
+                     .where(User.login == login)).mappings().first()
+    # Always run bcrypt, including unknown logins and disabled accounts.
+    valid = verify_password(password, row["password_hash"] if row else DUMMY_HASH)
+    if row is None or not valid or not row["is_active"]:
         return None
-    return {"id": row["id"], "email": row["email"]}
+    return {key: value for key, value in row.items() if key != "password_hash"}
 
 
 def get_user(db: Connection, user_id: int) -> dict | None:
-    row = db.execute(select(User.id, User.email).where(User.id == user_id)).mappings().first()
+    row = db.execute(select(*PUBLIC_COLUMNS, User.token_version).where(User.id == user_id)).mappings().first()
     return dict(row) if row else None

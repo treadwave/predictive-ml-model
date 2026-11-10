@@ -53,7 +53,13 @@ export interface Alert {
 
 export interface User {
   id: number;
-  email: string;
+  login: string;
+  role: "admin" | "employee";
+  is_active: boolean;
+}
+
+export interface ManagedUser extends User {
+  created_at: string;
 }
 
 export interface AuthResponse {
@@ -87,10 +93,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       const body = await res.json();
       if (typeof body.detail === "string") detail = body.detail;
-      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg: string }) => d.msg).join("; ");
+      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg: string }) => d.msg.replace(/^Value error, /, "")).join("; ");
     } catch {}
     throw new ApiError(res.status, detail);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -106,7 +113,13 @@ export const api = {
   listAlerts: (limit = 100) => request<Alert[]>(`/alerts?limit=${limit}`),
   alertsByEquipment: (id: number, limit = 50) => request<Alert[]>(`/alerts/${id}?limit=${limit}`),
   predict: (id: number) => request<EquipmentStatus>("/predict", postJson({ equipment_id: id })),
-  login: (email: string, password: string) => request<AuthResponse>("/auth/login", postJson({ email, password })),
-  register: (email: string, password: string) =>
-    request<AuthResponse>("/auth/register", postJson({ email, password })),
+  login: (login: string, password: string) => request<AuthResponse>("/auth/login", postJson({ login, password })),
+  me: () => request<User>("/auth/me"),
+  listUsers: (offset = 0) => request<ManagedUser[]>(`/admin/users?limit=50&offset=${offset}`),
+  createUser: (login: string, password: string) =>
+    request<ManagedUser>("/admin/users", postJson({ login, password })),
+  resetPassword: (id: number, password: string) =>
+    request<void>(`/admin/users/${id}/password`, { ...postJson({ password }), method: "PUT" }),
+  setUserActive: (id: number, is_active: boolean) =>
+    request<ManagedUser>(`/admin/users/${id}/status`, { ...postJson({ is_active }), method: "PUT" }),
 };

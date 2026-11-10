@@ -2,7 +2,8 @@ import { useSyncExternalStore } from "react";
 
 export interface Session {
   token: string;
-  email: string;
+  login: string;
+  role: "admin" | "employee";
 }
 
 const KEY = "offtech.session";
@@ -11,7 +12,7 @@ const listeners = new Set<() => void>();
 function read(): Session | null {
   try {
     const value = JSON.parse(localStorage.getItem(KEY) ?? "null");
-    return typeof value?.token === "string" && typeof value?.email === "string" ? value : null;
+    return typeof value?.token === "string" && typeof value?.login === "string" && (value.role === "admin" || value.role === "employee") ? value : null;
   } catch {
     return null;
   }

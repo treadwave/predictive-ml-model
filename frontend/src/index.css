@@ -258,7 +258,7 @@ h2 {
   color: #d1d5db;
   font-size: 14px;
 }
-.user-email {
+.user-login {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -298,3 +298,37 @@ h2 {
 .auth .muted {
   text-align: center;
 }
+
+.account-form { max-width: 600px; margin: 20px 0; }
+.account-form form, .account-form label { display: flex; flex-direction: column; gap: 8px; }
+.account-form form { margin-top: 16px; gap: 16px; }
+.account-form input { padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; }
+.account-form input:focus { outline: 2px solid #93c5fd; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.success { padding: 12px; color: #166534; background: #dcfce7; border-radius: 6px; }
+.table-scroll { overflow-x: auto; margin-top: 20px; }
+.pagination { margin-top: 16px; }
+@media (max-width: 720px) {
+  .header { height: auto; min-height: 56px; flex-wrap: wrap; gap: 12px; padding: 12px; }
+  .header nav { flex-wrap: wrap; }
+  .main { padding: 16px; }
+  .page-head { gap: 12px; flex-wrap: wrap; }
+}
+
+.password-field { display: flex; flex-direction: column; gap: 6px; }
+.password-control { display: flex; align-items: stretch; gap: 8px; }
+.password-control input { flex: 1; width: 0; min-width: 0; }
+.password-toggle {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  color: #374151;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.password-toggle:hover { background: #e5e7eb; }
+.password-toggle:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.password-toggle:disabled { opacity: 0.6; cursor: default; }

@@ -25,7 +25,7 @@ services:
     build: ./backend
     <<: *app-env
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -76,7 +76,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       backend:
         condition: service_healthy

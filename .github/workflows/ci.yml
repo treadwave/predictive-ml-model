@@ -64,6 +64,12 @@ jobs:
         working-directory: backend
         run: alembic check
 
+      - name: Test authentication and authorization
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://pdm:pdm@localhost:5432/pdm
+        run: pytest -q
+
   model:
     runs-on: ubuntu-latest
 
@@ -156,3 +162,18 @@ jobs:
           ML=$(psql "$PSQL_URL" -tAc "SELECT count(*) FROM ml_predictions")
           echo "equipment=$EQ sensor_readings=$SR ml_predictions=$ML"
           [ "$EQ" -eq 20 ] && [ "$SR" -gt 0 ] && [ "$ML" -eq "$SR" ]
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install and build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
