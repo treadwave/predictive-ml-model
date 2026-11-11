@@ -1,5 +1,6 @@
 import json
 import re
+import secrets
 import sys
 import time
 import urllib.error
@@ -17,11 +18,20 @@ CONTRACT = [
     ("GET", "/alerts"),
     ("GET", "/alerts/{id}"),
     ("POST", "/predict"),
+    ("POST", "/auth/register"),
+    ("POST", "/auth/login"),
+    ("GET", "/auth/me"),
 ]
 
 
-def call(method, path):
-    req = urllib.request.Request(BASE + path, method=method, headers={"Accept": "application/json"})
+def call(method, path, body=None, token=None):
+    headers = {"Accept": "application/json"}
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(BASE + path, data=data, method=method, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             return r.status, json.loads(r.read().decode() or "null")
@@ -65,8 +75,20 @@ def main():
         fail("в API нет эндпоинтов из контракта README:\n  " + "\n  ".join(missing))
     print(f"OK  контракт README: {len(CONTRACT)} эндпоинтов найдено (префикс {prefix or '—'!r})")
 
+    code, _ = call("GET", prefix + "/equipment")
+    if code != 401:
+        fail(f"без токена GET {prefix}/equipment: ожидали 401, получили {code}")
+    print("OK  без токена -> 401")
+
+    credentials = {"email": f"smoke-{int(time.time())}@example.com", "password": secrets.token_urlsafe(16)}
+    code, session = call("POST", prefix + "/auth/register", credentials)
+    if code != 201 or not isinstance(session, dict) or not session.get("access_token"):
+        fail(f"регистрация: ожидали 201 с токеном, получили {code}")
+    token = session["access_token"]
+    print(f"OK  POST {prefix}/auth/register -> 201, токен получен")
+
     items = wait_for(lambda: (lambda r: r[1] if r[0] == 200 and isinstance(r[1], list) and r[1] else None)(
-        call("GET", prefix + "/equipment")), "непустого списка оборудования (работают ли симулятор и воркер?)")
+        call("GET", prefix + "/equipment", token=token)), "непустого списка оборудования (работают ли симулятор и воркер?)")
     if not isinstance(items[0], dict) or "id" not in items[0]:
         fail("у элементов /equipment нет поля id")
     eq_id = items[0]["id"]
@@ -76,10 +98,10 @@ def main():
         if method != "GET" or path == "/equipment":
             continue
         real = prefix + path.replace("{id}", str(eq_id))
-        wait_for(lambda real=real: True if call("GET", real)[0] == 200 else None, f"ответа 200 от GET {real}")
+        wait_for(lambda real=real: True if call("GET", real, token=token)[0] == 200 else None, f"ответа 200 от GET {real}")
         print(f"OK  GET {real}")
 
-    code, _ = call("GET", f"{prefix}/equipment/999999999")
+    code, _ = call("GET", f"{prefix}/equipment/999999999", token=token)
     if code != 404:
         fail(f"несуществующее оборудование: ожидали 404, получили {code}")
     print("OK  несуществующее оборудование -> 404")

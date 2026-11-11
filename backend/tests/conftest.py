@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import date
 
 import pytest
@@ -11,8 +12,9 @@ os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ["RUL_WARNING"] = "75"
 os.environ["RUL_CRITICAL"] = "30"
 os.environ["RUL_CLIP"] = "125"
+os.environ["JWT_SECRET"] = secrets.token_urlsafe(32)
 
-TABLES = "alerts, ml_predictions, physics_predictions, sensor_readings, equipment"
+TABLES = "alerts, ml_predictions, physics_predictions, sensor_readings, equipment, users"
 
 
 @pytest.fixture
@@ -26,10 +28,23 @@ def db():
 
 
 @pytest.fixture
-def client(db):
+def anon_client(db):
     from main import app
 
     return TestClient(app)
+
+
+@pytest.fixture
+def client(db):
+    """Клиент вошедшего пользователя: все эндпоинты, кроме /auth, требуют токен."""
+    from app.core.security import create_token
+    from app.models import User
+    from main import app
+
+    statement = insert(User).values(email="operator@example.com", password_hash="-").returning(User.id)
+    user_id = db.execute(statement).scalar_one()
+    db.commit()
+    return TestClient(app, headers={"Authorization": f"Bearer {create_token(user_id)}"})
 
 
 @pytest.fixture

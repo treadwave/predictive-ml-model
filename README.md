@@ -118,6 +118,16 @@ api/v1 (эндпоинты, валидация) → services (бизнес-ло�
 
 Все эндпоинты — с префиксом `/api/v1`. Документация OpenAPI: `/docs`.
 
+### Авторизация
+
+Все эндпоинты, кроме `/auth/register`, `/auth/login` и `/health`, требуют заголовок `Authorization: Bearer <токен>`, без него отвечают `401`. Токен — JWT, его выдают регистрация и вход; живёт `JWT_EXPIRE_MINUTES` минут (по умолчанию сутки). Подписывается ключом `JWT_SECRET` из `.env`: сгенерировать — `python -c "import secrets; print(secrets.token_urlsafe(32))"`. Если ключ не задан, backend создаёт временный, и после его перезапуска войти придётся заново. Пароли хранятся только как bcrypt-хэш.
+
+| Метод | Эндпоинт         | Описание                                                      | Ожидаемый latency |
+| ----- | ---------------- | ------------------------------------------------------------- | ----------------- |
+| POST  | `/auth/register` | Регистрация по email и паролю (от 8 символов), сразу выдаёт токен; `409`, если email занят | < 500 мс |
+| POST  | `/auth/login`    | Вход: токен; `401` при неверном email или пароле              | < 500 мс          |
+| GET   | `/auth/me`       | Текущий пользователь                                          | < 100 мс          |
+
 ### Оборудование
 
 | Метод | Эндпоинт                   | Описание                             | Ожидаемый latency |
@@ -228,9 +238,16 @@ erDiagram
         varchar severity "info warning critical"
         text message
     }
+
+    users {
+        int id PK
+        text email "уникальный, в нижнем регистре"
+        text password_hash "bcrypt"
+        timestamp created_at
+    }
 ```
 
-Ограничения и индексы: `UNIQUE (dataset, unit_number)` в `equipment`; `UNIQUE (equipment_id, cycle)` в `sensor_readings`, `physics_predictions`, `ml_predictions`; индекс `alerts (equipment_id, triggered_at DESC)`. Показания хранятся широкой таблицей: набор из 14 датчиков фиксирован, так запросы истории не требуют `PIVOT`. Для других наборов (FD002–FD004) добавляются колонки миграцией; полный список датчиков и признак `is_used` лежат в `sensor_catalog`.
+Ограничения и индексы: `UNIQUE (dataset, unit_number)` в `equipment`; `UNIQUE (equipment_id, cycle)` в `sensor_readings`, `physics_predictions`, `ml_predictions`; индекс `alerts (equipment_id, triggered_at DESC)`; `UNIQUE (email)` в `users`. Показания хранятся широкой таблицей: набор из 14 датчиков фиксирован, так запросы истории не требуют `PIVOT`. Для других наборов (FD002–FD004) добавляются колонки миграцией; полный список датчиков и признак `is_used` лежат в `sensor_catalog`.
 
 При записи (40 записей/сек) все вставки идут в разные таблицы от фоновых процессов. 40 INSERT/сек — незначительная нагрузка для PostgreSQL.
 При чтении (~10-20 RPS) PostgreSQL будет находить строки за O(log n). Проблем не возникнет.

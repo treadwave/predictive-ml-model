@@ -237,3 +237,53 @@ h2 {
   color: #2563eb;
   font-weight: 500;
 }
+
+.user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: #d1d5db;
+  font-size: 14px;
+}
+.user-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth {
+  max-width: 380px;
+  margin: 48px auto;
+  padding: 24px;
+}
+.auth form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 20px 0 16px;
+}
+.auth label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.auth input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font: inherit;
+}
+.auth input:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+.auth .error {
+  margin: 0;
+}
+.auth .muted {
+  text-align: center;
+}
