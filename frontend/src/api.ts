@@ -27,6 +27,13 @@ export interface Reading {
   sensors: Record<string, number>;
 }
 
+export interface PhysicsPoint {
+  cycle: number;
+  expected: number;
+  actual: number;
+  residual: number;
+}
+
 export interface ForecastPoint {
   cycle: number;
   rul: number;
@@ -110,6 +117,7 @@ export const api = {
   getEquipment: (id: number) => request<Equipment>(`/equipment/${id}`),
   getHistory: (id: number, limit = 500) => request<Reading[]>(`/equipment/${id}/history?limit=${limit}`),
   getForecast: (id: number) => request<Forecast>(`/equipment/${id}/forecast`),
+  getPhysics: (id: number, limit = 500) => request<PhysicsPoint[]>(`/equipment/${id}/physics?limit=${limit}`),
   listAlerts: (limit = 100) => request<Alert[]>(`/alerts?limit=${limit}`),
   alertsByEquipment: (id: number, limit = 50) => request<Alert[]>(`/alerts/${id}?limit=${limit}`),
   predict: (id: number) => request<EquipmentStatus>("/predict", postJson({ equipment_id: id })),

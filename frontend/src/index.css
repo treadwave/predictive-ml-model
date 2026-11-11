@@ -205,17 +205,6 @@ h2 {
 .grid > .card:last-child {
   grid-column: 1 / -1;
 }
-.placeholder {
-  height: 260px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 24px;
-  color: #6b7280;
-  border: 2px dashed #e5e7eb;
-  border-radius: 6px;
-}
 
 .muted {
   color: #6b7280;

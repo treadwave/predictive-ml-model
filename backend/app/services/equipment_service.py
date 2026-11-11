@@ -3,6 +3,7 @@ from sqlalchemy import Connection, and_, func, select
 from app.core.config import RUL_CLIP, RUL_CRITICAL, RUL_WARNING
 from app.models.equipment import Equipment
 from app.models.ml_predictions import MlPrediction
+from app.models.physics_predictions import PhysicsPrediction
 from app.models.sensor_readings import SensorReading
 
 SENSOR_CODES = ["s2", "s3", "s4", "s7", "s8", "s9", "s11", "s12", "s13", "s14", "s15", "s17", "s20", "s21"]
@@ -113,6 +114,26 @@ def get_history(db: Connection, equipment_id: int, from_cycle: int | None, to_cy
         rows.append({"cycle": row["cycle"], "sensors": sensors})
     rows.reverse()
     return rows
+
+
+def get_physics(db: Connection, equipment_id: int, limit: int) -> list[dict] | None:
+    if not equipment_exists(db, equipment_id):
+        return None
+
+    query = (
+        select(PhysicsPrediction.cycle, PhysicsPrediction.predicted_degradation, MlPrediction.residual)
+        .join(MlPrediction, and_(MlPrediction.equipment_id == PhysicsPrediction.equipment_id,
+                                 MlPrediction.cycle == PhysicsPrediction.cycle))
+        .where(PhysicsPrediction.equipment_id == equipment_id)
+        .order_by(PhysicsPrediction.cycle.desc())
+        .limit(limit)
+    )
+
+    points = [{"cycle": row.cycle, "expected": row.predicted_degradation,
+               "actual": row.predicted_degradation + row.residual, "residual": row.residual}
+              for row in db.execute(query)]
+    points.reverse()
+    return points
 
 
 def get_forecast(db: Connection, equipment_id: int) -> dict | None:

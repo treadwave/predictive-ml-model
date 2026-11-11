@@ -31,6 +31,13 @@ class ReadingOut(BaseModel):
     sensors: dict[str, float] = Field(description="Показания 14 рабочих датчиков: код → значение")
 
 
+class PhysicsPointOut(BaseModel):
+    cycle: int
+    expected: float = Field(description="Ожидаемая деградация по физической модели: 0 — исправный двигатель, 1 — отказ")
+    actual: float = Field(description="Фактическая деградация по показаниям датчиков")
+    residual: float = Field(description="Невязка: фактическая деградация минус ожидаемая")
+
+
 class ForecastPoint(BaseModel):
     cycle: int
     rul: float = Field(description="Ожидаемый остаточный ресурс на этом цикле")

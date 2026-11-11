@@ -41,3 +41,12 @@ export function formatDateTime(value: string): string {
 export function formatRul(value: number): string {
   return Math.round(value).toString();
 }
+
+export function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+export function formatResidual(value: number): string {
+  const points = Math.round(value * 100);
+  return `${points > 0 ? "+" : ""}${points} п.п.`;
+}

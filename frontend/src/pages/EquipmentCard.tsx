@@ -4,6 +4,7 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
+  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -18,7 +19,7 @@ import { AlertsTable } from "../components/AlertsTable";
 import { LiveIndicator } from "../components/LiveIndicator";
 import { Empty, ErrorMessage, Loading } from "../components/State";
 import { StatusBadge } from "../components/StatusBadge";
-import { SENSORS, formatDate, formatRul } from "../format";
+import { SENSORS, formatDate, formatPercent, formatResidual, formatRul } from "../format";
 import { useLiveFetch } from "../useLiveFetch";
 
 const RUL_WARNING = 75;
@@ -84,7 +85,7 @@ export function EquipmentCard() {
       <div className="grid">
         <ForecastChart id={id} />
         <HistoryChart id={id} />
-        <PhysicsChart />
+        <PhysicsChart id={id} />
         <EquipmentAlerts id={id} />
       </div>
     </section>
@@ -158,15 +159,32 @@ function ForecastChart({ id }: { id: number }) {
   );
 }
 
-function PhysicsChart() {
+function PhysicsChart({ id }: { id: number }) {
+  const { data, error } = useLiveFetch(() => api.getPhysics(id), [id]);
+  const last = data && data.length > 0 ? data[data.length - 1] : null;
+
   return (
     <div className="card">
       <div className="card-title">
         <h2>Физическая модель против фактических показаний</h2>
+        {last && <span className="muted">невязка {formatResidual(last.residual)}</span>}
       </div>
-      <div className="placeholder">
-        Заглушка
-      </div>
+      {error && <ErrorMessage message={error} />}
+      {!data && !error && <Loading />}
+      {data && data.length === 0 && <Empty text="Физическая модель ещё не посчитана." />}
+      {data && data.length > 0 && (
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="cycle" label={{ value: "цикл", position: "insideBottomRight", offset: -4 }} />
+            <YAxis width={50} tickFormatter={formatPercent} />
+            <Tooltip formatter={(v: number, name: string) => [formatPercent(v), name]} labelFormatter={(c) => `Цикл ${c}`} />
+            <Legend />
+            <Line dataKey="expected" name="ожидаемая деградация" stroke="#d97706" strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+            <Line dataKey="actual" name="фактическая по датчикам" stroke="#2563eb" dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }

@@ -2,7 +2,13 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import DB
 from app.core.errors import NOT_FOUND, equipment_not_found
-from app.schemas.equipment import EquipmentOut, ForecastOut, ReadingOut, StatusOut
+from app.schemas.equipment import (
+    EquipmentOut,
+    ForecastOut,
+    PhysicsPointOut,
+    ReadingOut,
+    StatusOut,
+)
 from app.services import equipment_service
 
 router = APIRouter(prefix="/equipment", tags=["Оборудование"])
@@ -40,6 +46,13 @@ def get_history(equipment_id: int, db: DB,
     if from_cycle is not None and to_cycle is not None and from_cycle > to_cycle:
         raise HTTPException(status_code=400, detail="from_cycle не может быть больше to_cycle")
     return _found(equipment_service.get_history(db, equipment_id, from_cycle, to_cycle, limit), equipment_id)
+
+
+@router.get("/{equipment_id}/physics", response_model=list[PhysicsPointOut], responses=NOT_FOUND,
+            summary="Физическая модель против фактических показаний: ожидаемая и фактическая деградация")
+def get_physics(equipment_id: int, db: DB,
+                limit: int = Query(500, ge=1, le=5000, description="Максимум записей (берутся последние)")):
+    return _found(equipment_service.get_physics(db, equipment_id, limit), equipment_id)
 
 
 @router.get("/{equipment_id}/forecast", response_model=ForecastOut, responses=NOT_FOUND,

@@ -5,6 +5,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import physics
 import xgboost as xgb
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
@@ -15,6 +16,10 @@ load_dotenv()
 
 warning_rul = int(os.getenv("RUL_WARNING"))
 critical_rul = int(os.getenv("RUL_CRITICAL"))
+
+TRAIN_PATH = os.getenv("TRAIN_PATH", "../data/train_FD001.txt")
+WEATHER_LATITUDE = float(os.getenv("WEATHER_LATITUDE", "55.7558"))
+WEATHER_LONGITUDE = float(os.getenv("WEATHER_LONGITUDE", "37.6173"))
 
 engine = create_engine(os.getenv("DATABASE_URL"))
 
@@ -33,6 +38,7 @@ def get_data_from_simulator() -> tuple[pd.DataFrame, pd.DataFrame] | tuple[None,
                     ON sensor_readings.equipment_id = ml_predictions.equipment_id
                     AND sensor_readings.cycle = ml_predictions.cycle
                     WHERE ml_predictions.id IS NULL
+                    ORDER BY sensor_readings.equipment_id, sensor_readings.cycle
                     """)
         result = connection.execute(query)
 
@@ -50,14 +56,39 @@ def model_predict(df: pd.DataFrame, model: xgb.XGBRegressor) -> np.ndarray:
 
     return arr
 
+def get_physics_state() -> dict[int, tuple[int, float, float]]:
+    """Последний посчитанный цикл по каждому оборудованию: ожидаемая и сглаженная фактическая деградация."""
+    query = text("""
+                SELECT DISTINCT ON (physics_predictions.equipment_id)
+                       physics_predictions.equipment_id, physics_predictions.cycle,
+                       physics_predictions.predicted_degradation, ml_predictions.residual
+                FROM physics_predictions
+                JOIN ml_predictions
+                ON physics_predictions.equipment_id = ml_predictions.equipment_id
+                AND physics_predictions.cycle = ml_predictions.cycle
+                ORDER BY physics_predictions.equipment_id, physics_predictions.cycle DESC
+                """)
+
+    with engine.connect() as connection:
+        return {eq_id: (cycle, expected, expected + residual)
+                for eq_id, cycle, expected, residual in connection.execute(query)}
+
 def write_to_tables():
     model = get_model()
+    physics_model = physics.fit(TRAIN_PATH)
+    weather = physics.Weather(WEATHER_LATITUDE, WEATHER_LONGITUDE)
 
     last_id = 0
 
+    query_first = text("""
+                    INSERT INTO physics_predictions (equipment_id, cycle, predicted_degradation)
+                    VALUES (:equipment_id, :cycle, :predicted_degradation)
+                    ON CONFLICT DO NOTHING
+                    """)
+
     query_second = text("""
                     INSERT INTO ml_predictions (equipment_id, cycle, predicted_rul, defect_probability, residual, model_version)
-                    VALUES (:eq_id, :cycle, :rul, 0, 0, :model)
+                    VALUES (:eq_id, :cycle, :rul, 0, :residual, :model)
                     ON CONFLICT DO NOTHING
                     """)
 
@@ -71,11 +102,16 @@ def write_to_tables():
             else:
                 t0 = time.perf_counter()
                 arr = model_predict(df_pred, model)
+                factor = physics.acceleration(weather.temperature())
+                df_physics = physics.predict(physics_model, df, get_physics_state(), factor)
+
                 with engine.connect() as connection:
+                    connection.execute(query_first, df_physics[['equipment_id', 'cycle', 'predicted_degradation']].to_dict('records'))
 
                     for i in range (arr.size):
                         df_row = df.iloc[i]
-                        connection.execute(query_second, {'eq_id': df_row['equipment_id'], 'cycle': df_row['cycle'], 'rul':arr[i], 'model': 'first_xgboost_model'})
+                        connection.execute(query_second, {'eq_id': df_row['equipment_id'], 'cycle': df_row['cycle'], 'rul':arr[i],
+                                                          'residual': df_physics['residual'].iat[i], 'model': 'first_xgboost_model'})
 
                     connection.commit()
 

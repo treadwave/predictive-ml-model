@@ -3,10 +3,19 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +34,7 @@ jobs:
 
   migrations:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     services:
       postgres:
@@ -64,7 +74,7 @@ jobs:
         working-directory: backend
         run: alembic check
 
-      - name: Test authentication and authorization
+      - name: Test backend including authorization and physics
         working-directory: backend
         env:
           TEST_DATABASE_URL: postgresql+psycopg://pdm:pdm@localhost:5432/pdm
@@ -72,6 +82,7 @@ jobs:
 
   model:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     env:
       MODEL_PATH: /tmp/model.json
@@ -99,6 +110,7 @@ jobs:
   pipeline:
     needs: [migrations, model]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -163,17 +175,167 @@ jobs:
           echo "equipment=$EQ sensor_readings=$SR ml_predictions=$ML"
           [ "$EQ" -eq 20 ] && [ "$SR" -gt 0 ] && [ "$ML" -eq "$SR" ]
 
+
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install and build frontend
-        working-directory: frontend
+          node-version: 22
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package.json', 'frontend/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - name: Install dependencies
         run: |
-          npm ci
-          npm run build
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Typecheck and build
+        run: npm run build
+
+  stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env
+        run: |
+          {
+            echo "POSTGRES_USER=pdm"
+            echo "POSTGRES_PASSWORD=pdm"
+            echo "POSTGRES_DB=pdm"
+            echo "SIMULATOR_WAIT_TIME=0"
+            echo "WORKER_POLL_INTERVAL=5"
+            echo "RUL_WARNING=75"
+            echo "RUL_CRITICAL=30"
+            echo "RUL_CLIP=125"
+            python3 -c 'import secrets; print("JWT_SECRET=" + secrets.token_urlsafe(48))'
+          } > .env
+
+      - name: Validate docker-compose.yml
+        run: docker compose config -q
+
+      - name: Build all images
+        run: docker compose build
+
+      - name: Start db, backend, frontend
+        run: docker compose up -d --wait db backend frontend
+
+      - name: Start simulator and worker
+        run: docker compose up -d simulator worker
+
+      - name: Frontend is served
+        run: curl -fsS -o /dev/null http://localhost:5173/
+
+      - name: Create account for API smoke
+        run: |
+          SMOKE_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')
+          echo "::add-mask::$SMOKE_PASSWORD"
+          echo "SMOKE_PASSWORD=$SMOKE_PASSWORD" >> "$GITHUB_ENV"
+          export SMOKE_PASSWORD
+          docker compose exec -T -e SMOKE_PASSWORD backend python - <<'PYTHON'
+          import os
+          from app.core.db import engine
+          from app.services.auth_service import create_user
+          with engine.connect() as db:
+              user = create_user(db, "ci.smoke", os.environ["SMOKE_PASSWORD"])
+              if user is None:
+                  raise SystemExit("Smoke-test login already exists")
+          PYTHON
+
+      - name: API smoke
+        run: python3 scripts/api_smoke.py http://localhost:8000 240
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail=100
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit Python dependencies
+        id: pip_audit
+        continue-on-error: true
+        run: pip-audit -r backend/requirements.txt -r ml/requirements.txt
+
+      - name: Warn about Python vulnerabilities
+        if: steps.pip_audit.outcome == 'failure'
+        run: echo "::warning title=pip-audit::В Python-зависимостях найдены уязвимости, подробности в логе шага Audit Python dependencies"
+
+      - name: Audit npm dependencies
+        id: npm_audit
+        continue-on-error: true
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Warn about npm vulnerabilities
+        if: steps.npm_audit.outcome == 'failure'
+        run: echo "::warning title=npm audit::В npm-зависимостях найдены уязвимости, подробности в логе шага Audit npm dependencies"
+
+  hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Lint workflows (actionlint)
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color
+
+      - name: Scan for secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: PR is linked to an issue
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if echo "$PR_BODY" | grep -Eiq '(close[sd]?|fix(e[sd])?|resolve[sd]?|refs?) +#[0-9]+'; then
+            echo "Задача найдена в описании PR"
+          else
+            echo "::error title=Нет ссылки на задачу::Добавьте в описание PR строку вида 'Closes #45'"
+            exit 1
+          fi
