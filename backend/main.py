@@ -1,4 +1,4 @@
-from app.api import alerts, auth, equipment, predict, users
+from app.api import alerts, auth, equipment, health, predict, sensors, users
 from app.api.auth import UNAUTHORIZED, get_current_user
 from app.core.config import CORS_ORIGINS
 from fastapi import Depends, FastAPI
@@ -18,6 +18,9 @@ app.include_router(auth.router)
 app.include_router(equipment.router, dependencies=PROTECTED, responses=UNAUTHORIZED)
 app.include_router(alerts.router, dependencies=PROTECTED, responses=UNAUTHORIZED)
 app.include_router(predict.router, dependencies=PROTECTED, responses=UNAUTHORIZED)
+app.include_router(sensors.router, dependencies=PROTECTED, responses=UNAUTHORIZED)
+# Проверка живости — без токена, чтобы её могли дёргать healthcheck и мониторинг.
+app.include_router(health.router)
 
 app.include_router(users.router)
 

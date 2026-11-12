@@ -20,6 +20,7 @@ CONTRACT = [
     ("GET", "/alerts"),
     ("GET", "/alerts/{id}"),
     ("POST", "/predict"),
+    ("GET", "/sensors"),
 ]
 
 
@@ -113,6 +114,16 @@ def main():
         real = prefix + path.replace("{id}", str(eq_id))
         wait_for(lambda real=real: True if call("GET", real)[0] == 200 else None, f"ответа 200 от GET {real}")
         print(f"OK  GET {real}")
+
+    real = prefix + "/predict"
+    wait_for(lambda: True if call("POST", real, {"equipment_id": eq_id})[0] == 200 else None,
+             f"ответа 200 от POST {real} (смонтирована ли модель в backend?)")
+    print(f"OK  POST {real}")
+
+    code, _ = call("GET", "/health", authenticated=False)
+    if code != 200:
+        fail(f"GET /health без токена: ожидали 200, получили {code}")
+    print("OK  GET /health без токена")
 
     code, _ = call("GET", f"{prefix}/equipment/999999999")
     if code != 404:

@@ -14,7 +14,7 @@ PASSWORD = "Correct-pass 123!"
 def protected_routes():
     from main import app
     return sorted((method, re.sub(r"\{[^}]+\}", "1", route.path))
-                  for route in app.routes if isinstance(route, APIRoute) and route.path != "/auth/login"
+                  for route in app.routes if isinstance(route, APIRoute) and route.path not in ("/auth/login", "/health")
                   for method in route.methods)
 
 

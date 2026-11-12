@@ -26,6 +26,8 @@ services:
     <<: *app-env
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - models:/models:ro
     depends_on:
       db:
         condition: service_healthy
